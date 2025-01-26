@@ -6,9 +6,9 @@ on:
     - cron: '0 0 * * 6' # At 12:00 AM, only on Saturday
 
 env:
-  REGISTRY_IMAGE: "${{ vars.DOCKER_USER }}/clamav-rest"
-  REGISTRY_USER: ${{ vars.DOCKER_USER }}
-  REGISTRY_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  REGISTRY_IMAGE: "${{ secrets.DOCKERHUB_USERNAME }}/clamav-rest"
+  REGISTRY_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+  REGISTRY_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
 
 permissions:
   contents: write
