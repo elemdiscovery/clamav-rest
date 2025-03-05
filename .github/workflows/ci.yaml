@@ -3,12 +3,12 @@ name: Build & Push Container Image
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 6' # At 12:00 AM, only on Saturday
+    - cron: '37 0 * * *' # At 12:37 AM, every day. Odd minute to try to be polite to the clamav servers.
 
 env:
-  REGISTRY_IMAGE: "${{ vars.DOCKER_USER }}/clamav-rest"
-  REGISTRY_USER: ${{ vars.DOCKER_USER }}
-  REGISTRY_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  REGISTRY_IMAGE: "${{ secrets.DOCKERHUB_USERNAME }}/clamav-rest"
+  REGISTRY_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+  REGISTRY_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
 
 permissions:
   contents: write
@@ -70,6 +70,7 @@ jobs:
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          no-cache: true
 
       - name: Export digest
         run: |
