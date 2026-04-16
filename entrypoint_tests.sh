@@ -1,4 +1,14 @@
 #!/bin/bash
+
+# Generate self-signed TLS certificate for tests if not already present
+if [ ! -f /etc/ssl/clamav-rest/server.key ] || [ ! -f /etc/ssl/clamav-rest/server.crt ]; then
+    echo "Generating self-signed TLS certificate for tests..."
+    openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 \
+        -keyout /etc/ssl/clamav-rest/server.key \
+        -out /etc/ssl/clamav-rest/server.crt \
+        -days 1 -nodes -subj "/CN=localhost" 2>/dev/null
+fi
+
 cp /etc/clamav/* /clamav/etc/
 
 # Replace values in freshclam.conf
@@ -13,8 +23,8 @@ sed -i 's/^#\?Checks .*$/Checks '"$SIGNATURE_CHECKS"'/g' /clamav/etc/freshclam.c
 
 # Replace values with environment variables in clamd.conf
 sed -i 's/^#MaxScanSize .*$/MaxScanSize '"$MAX_SCAN_SIZE"'/g' /clamav/etc/clamd.conf
-sed -i 's/^#StreamMaxLength .*$/StreamMaxLength '"$MAX_FILE_SIZE"'/g' /clamav/etc/clamd.conf
-sed -i 's/^#MaxFileSize .*$/MaxFileSize '"$MAX_FILE_SIZE"'/g' /clamav/etc/clamd.conf
+sed -i 's/^#StreamMaxLength .*$/StreamMaxLength 10M/g' /clamav/etc/clamd.conf #'"$MAX_FILE_SIZE"'
+sed -i 's/^#MaxFileSize .*$/MaxFileSize 10M/g' /clamav/etc/clamd.conf #$MAX_FILE_SIZE - test case to make sure 413 on filesize exceeded works.
 sed -i 's/^#MaxRecursion .*$/MaxRecursion '"$MAX_RECURSION"'/g' /clamav/etc/clamd.conf
 sed -i 's/^#MaxFiles .*$/MaxFiles '"$MAX_FILES"'/g' /clamav/etc/clamd.conf
 sed -i 's/^#MaxEmbeddedPE .*$/MaxEmbeddedPE '"$MAX_EMBEDDEDPE"'/g' /clamav/etc/clamd.conf
@@ -27,7 +37,7 @@ sed -i 's/^#MaxIconsPE .*$/MaxIconsPE '"$MAX_ICONSPE"'/g' /clamav/etc/clamd.conf
 sed -i 's/^#PCREMatchLimit.*$/PCREMatchLimit '"$PCRE_MATCHLIMIT"'/g' /clamav/etc/clamd.conf
 sed -i 's/^#PCRERecMatchLimit .*$/PCRERecMatchLimit '"$PCRE_RECMATCHLIMIT"'/g' /clamav/etc/clamd.conf
 
-#define function to terminate the container
+# Define function to terminate the container
 terminate () {
     pids=`jobs -p`
     for pid in $pids; do
@@ -52,8 +62,8 @@ exitcode=0
     
    
     echo "Will run test and then exit"
-    /opt/clamav-rest/run-tests 
-    # the exit code from `run-tests` is the numberOfFailedSteps
+    /opt/clamav-rest/run-go-tests
+    # the exit code from `run-go-tests` determines the container exit code
     res=$?
     # terminate the other processes of the container.
     terminate
