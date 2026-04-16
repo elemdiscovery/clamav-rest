@@ -46,3 +46,47 @@ Upstream's release workflow derives a semver tag from conventional commit messag
 - The test suite — upstream migrated from Python/behave to Go tests. Our earlier local behave tests for h2c were dropped for the same reason.
 - `freshclam` still runs at **image build time** (see the `RUN freshclam --quiet --no-dns` step in [Dockerfile](Dockerfile)). That is the only source of signature updates for this fork.
 
+## Pulling in future upstream changes
+
+This fork keeps upstream's history on an `upstream-master` branch of `origin`. The sync flow is GitHub-UI + local merge, no `upstream` git remote.
+
+### 1. Sync `upstream-master` on GitHub
+
+1. Open `https://github.com/elemdiscovery/clamav-rest/tree/upstream-master` in a browser.
+2. Click the **Sync fork** button near the top of the file list.
+3. GitHub shows how many commits behind `ajilach/clamav-rest:master` the branch is; click **Update branch**. This fast-forwards `origin/upstream-master` without needing a local checkout.
+
+If the "Sync fork" button shows a conflict, that means someone has committed directly to `upstream-master` on our fork — which should not happen. Treat it as `upstream-master` being corrupted: hard-reset it to `ajilach/clamav-rest:master` (via CLI or by deleting and re-creating the branch) before proceeding.
+
+### 2. Merge locally into a throwaway branch
+
+```bash
+git fetch origin
+git checkout -b merge-upstream-$(date +%Y%m%d) master
+git merge origin/upstream-master
+```
+
+### 3. Resolve conflicts
+
+Walk the three known pressure points:
+
+- **[entrypoint.sh](entrypoint.sh)** — make sure the `DISABLE_FRESHCLAM` guard around `freshclam --daemon` survives, and that the 120s RELOAD block stays deleted.
+- **[.github/workflows/release.yaml](.github/workflows/release.yaml)** — re-apply the schedule cron, `DOCKERHUB_*` secret names, and `no-cache: true`. If upstream has split or renamed the workflow again, find the job that pushes the image and port the three tweaks there.
+- **[Dockerfile](Dockerfile)** — confirm `ENV DISABLE_FRESHCLAM=true` is still in the env block.
+
+Anything else — Go code, test files, docs — take upstream's version unless we have a specific reason not to. Smaller diff vs upstream is a goal.
+
+### 4. Sanity check
+
+```bash
+docker build -t clamav-rest:merge-test .
+docker run --rm -p 9000:9000 -e DISABLE_FRESHCLAM=true clamav-rest:merge-test
+# In another shell:
+curl http://localhost:9000/version
+```
+
+Look for: `clamd` starts, `clamav-rest` responds on `/version`, no `freshclam` process running, no update-failure log spam.
+
+### 5. PR into master
+
+Push the branch and open a PR from `merge-upstream-YYYYMMDD` → `master`. Let CI run. Squash-merge is fine; a merge commit is also fine — whichever matches the repo convention at the time. Delete the branch after.
