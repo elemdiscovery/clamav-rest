@@ -221,6 +221,10 @@ func scanner(w http.ResponseWriter, r *http.Request, version int) {
 			if err == io.EOF {
 				break
 			}
+			if err != nil {
+				http.Error(w, fmt.Sprintf("invalid multipart request: %v", err), http.StatusBadRequest)
+				return
+			}
 
 			// if part.FileName() is empty, skip this iteration.
 			if part.FileName() == "" {
