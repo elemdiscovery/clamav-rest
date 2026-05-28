@@ -4,12 +4,14 @@ on:
   push:
     branches:
       - master
+  schedule:
+    - cron: '37 0 * * *' # At 12:37 AM, every day. Odd minute to try to be polite to the clamav servers.
   workflow_dispatch:
 
 env:
-  REGISTRY_IMAGE: "${{ vars.DOCKER_USER }}/clamav-rest"
-  REGISTRY_USER: ${{ vars.DOCKER_USER }}
-  REGISTRY_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  REGISTRY_IMAGE: "${{ secrets.DOCKERHUB_USERNAME }}/clamav-rest"
+  REGISTRY_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+  REGISTRY_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
 
 permissions:
   contents: write

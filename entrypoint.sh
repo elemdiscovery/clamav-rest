@@ -57,18 +57,14 @@ if [ -z "$(ls -A /clamav/data)" ]; then
 fi
 
 (
-    freshclam --config-file=/clamav/etc/freshclam.conf --daemon &
+    # Skip freshclam in airgapped/offline setups — the build-time freshclam
+    # already baked signatures into the image, and a runtime daemon would only
+    # produce update-failure log noise it cannot recover from.
+    if [ "${DISABLE_FRESHCLAM:-false}" != "true" ]; then
+        freshclam --config-file=/clamav/etc/freshclam.conf --daemon &
+    fi
     clamd --config-file=/clamav/etc/clamd.conf &
     /usr/bin/clamav-rest &
-    # Force reload the virus database through the clamd socket after 120s.
-    # Starting freshclam and clamd async ends up that a newer database version is loaded with
-    # freshclam, but the clamd still keep the old version existing before the update because 
-    # the socket from clamd is not yet ready to inform, what is indicated in the log
-    # during the startup of the container (WARNING: Clamd was NOT notified: Can't connect to clamd through /run/clamav/clamd.sock: No such file or directory).
-    # So only if a newer database version is available clamd will be notified next time, and this can take hours/days.
-    # Remarks: The socket port is configured in the .Dockerfile itself.
-    sleep 120s
-    echo RELOAD | nc 127.0.0.01 3310 &
 ) 2>&1 | tee -a /var/log/clamav/clamav.log
 
 pids=`jobs -p`
