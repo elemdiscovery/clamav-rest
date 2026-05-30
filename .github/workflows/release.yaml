@@ -5,7 +5,7 @@ on:
     branches:
       - master
   schedule:
-    - cron: '37 0 * * 0' # At 12:37 AM every Sunday. AV signature updates are handled by a separate pipeline; this weekly rebuild just refreshes the base image and baked-in deps. Odd minute to be polite to the clamav servers.
+    - cron: '37 0 * * *' # At 12:37 AM, every day. Odd minute to try to be polite to the clamav servers.
   workflow_dispatch:
 
 env:
