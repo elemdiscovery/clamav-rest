@@ -24,8 +24,8 @@ RUN apk add bash logrotate
 
 COPY clamavlogrotate /etc/logrotate.d/clamav
 
-# Set timezone to Europe/Zurich
-ENV TZ=Europe/Zurich
+# Set timezone to UTC so log timestamps correlate with external systems
+ENV TZ=Etc/UTC
 
 # Create SSL directory for runtime-mounted certificates
 RUN mkdir -p /etc/ssl/clamav-rest
@@ -41,7 +41,13 @@ RUN sed -i 's/^#Foreground .*$/Foreground yes/g' /etc/clamav/clamd.conf \
     && sed -i 's/^#TCPSocket .*$/TCPSocket 3310/g' /etc/clamav/clamd.conf \
     && sed -i 's/^#Foreground .*$/Foreground yes/g' /etc/clamav/freshclam.conf
 
-RUN freshclam --quiet --no-dns
+# Download virus signatures at build time so the image ships ready to scan
+# (runtime freshclam is disabled by default for airgapped use). FRESHCLAM_DATE
+# is supplied by the release workflow as the current date; referencing it here
+# busts this layer's build cache once per day, so the scheduled rebuild fetches
+# fresh definitions instead of reusing a stale cached layer.
+ARG FRESHCLAM_DATE=unknown
+RUN echo "Signatures fetched for: ${FRESHCLAM_DATE}" && freshclam --quiet --no-dns
 
 COPY entrypoint.sh /usr/bin/
 
